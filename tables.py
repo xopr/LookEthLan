@@ -26,12 +26,13 @@ import os
 import logging
 from functools import partial
 
-from PyQt5.QtGui import QIcon, QCursor
+from PyQt5.QtGui import QIcon, QCursor, QStandardItemModel, QStandardItem
 from PyQt5.QtCore import (
     pyqtSignal, 
     QThread, 
     QTimer, 
-    QAbstractTableModel
+    QAbstractTableModel,
+    Qt
 )
 
 from PyQt5.QtWidgets import (
@@ -137,12 +138,36 @@ class HostTable(BaseTable):
 
        
 ################################################################################
-
-class LanTableModel(QAbstractTableModel):
-    def __init__(self, data):
-        super(LanTableModel, self).__init__()
-        self._data = data
+class IPItem( QStandardItem ):
+    def __lt__(self, other):
+        octets1 = self.text().split(".")
+        octets2 = other.text().split(".")
+        for idx in range(len(octets1)): # 4
+            n1 = int( octets1[idx] )
+            n2 = int( octets2[idx] )
+            if n1 > n2:
+                return True
+            if n1 < n2:
+                return False
+        return False
         
+    def lessThan(self, left, right):
+        print( "LESSTHAN" )
+        leftData = self.sourceModel().data(left)
+        rightData = self.sourceModel().data(right)
+        return self._human_key(leftData) < self._human_key(rightData)        
+
+class LanTableModel(QStandardItemModel):
+    def __init__(self, rows, columns, parent):
+        super(LanTableModel, self).__init__(rows, columns, parent)
+        QStandardItemModel(0, 2, parent)
+        #self._data = data
+
+    def sort(self, column:int, order:Qt.SortOrder=Qt.AscendingOrder ):
+        #print( "SORTING",a,b,c,d )
+        super(LanTableModel, self).sort(column,order)
+
+    """
     def setHorizontalHeaderLabels(self, labels):
         print( "labels", labels )
     def setRowCount(self,rows:int):
@@ -183,7 +208,7 @@ class LanTableModel(QAbstractTableModel):
             # Default (anything not captured above: e.g. int)
             return value
 
-        """
+        " ""
         if role == Qt.BackgroundRole:
             if (isinstance(value, int) or isinstance(value, float)):
                 value = int(value)  # Convert to integer for indexing.
@@ -194,7 +219,7 @@ class LanTableModel(QAbstractTableModel):
                 value = value + 5     # -5 becomes 0, +5 becomes + 10
 
                 return QtGui.QColor(COLORS[value])
-        """
+        " ""
                 
         if role == Qt.TextAlignmentRole:
 
@@ -222,7 +247,7 @@ class LanTableModel(QAbstractTableModel):
 
             if index.column() == 1:
                 if online == previous:
-                    """
+                    " ""
                     pixmap = QtGui.QPixmap(128, 128)
                     pixmap.fill( QtGui.QColor("#0ff" ) )
                     icon = QtGui.QIcon('right.png')
@@ -231,7 +256,7 @@ class LanTableModel(QAbstractTableModel):
                     icon.paint(p, QRect( 0,0,128,128 ))
                     p.end()
                     return QtGui.QIcon( pixmap )
-                    """
+                    " ""
                     return QtGui.QIcon('right.png')
                 if online:
                     return QtGui.QIcon('up.png')
@@ -275,4 +300,4 @@ class LanTableModel(QAbstractTableModel):
             if orientation == Qt.Vertical:
                 return None
                 #return str(self._data.index[section])
-
+    """

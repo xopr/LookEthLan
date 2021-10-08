@@ -81,7 +81,12 @@ from PyQt5.QtWidgets import (
     QLineEdit
 )
 
-from tables import HostTable, LanTableModel
+from tables import (
+    HostTable, 
+    LanTableModel, 
+    IPItem
+)
+
 import scanner
 
 LOG_FORMAT = "[%(levelname)s] - { %(name)s }: %(message)s"
@@ -95,6 +100,7 @@ class ColumnType(Enum):
     MS = 3,
     HOPS = 4,
     TIMESTAMP = 5,
+    SNMP = 6
 
 COLUMNS = { 
     "ip":       ColumnType.IP,
@@ -104,7 +110,7 @@ COLUMNS = {
     "ts":       ColumnType.TIMESTAMP,
     "fqdn":     ColumnType.STRING,
     "netbios":  ColumnType.STRING,
-    "snmp":     ColumnType.STRING
+    "snmp":     ColumnType.SNMP
 }
 
 COLUMN_NAMES = { 
@@ -281,7 +287,7 @@ class MainWindow(QMainWindow):
 
         # set table view model
         self.model_interpreter_table = QStandardItemModel(0, 2, centralwidget)
-        #self.model_interpreter_table = LanTableModel( None )
+        #self.model_interpreter_table = LanTableModel( 0, 2, centralwidget )
         
         self.model_interpreter_table.setHorizontalHeaderLabels(
             map(lambda col : COLUMN_NAMES[col], COLUMNS)
@@ -511,7 +517,7 @@ class MainWindow(QMainWindow):
             if COLUMNS[column] == ColumnType.IP:
             
                 changed = data["previous"] == None or data["online"] == data["previous"]
-                item = QStandardItem( str(ip) )
+                item = IPItem( str(ip) )
                 if data["previous"] == None:
                     item.setIcon( QIcon("./img/online-new.png") )
                 elif data["previous"] == data["online"]:
@@ -527,7 +533,7 @@ class MainWindow(QMainWindow):
                 row.append( item )
 
             elif COLUMNS[column] == ColumnType.MS:
-                item = QStandardItem( str( column in data and data[column] or "-" ) )
+                item = QStandardItem( "{}ms".format( data[column] ) )
                 row.append( item )
 
             elif COLUMNS[column] == ColumnType.HOPS:
@@ -537,11 +543,34 @@ class MainWindow(QMainWindow):
             elif COLUMNS[column] == ColumnType.TIMESTAMP:
                 item = QStandardItem( datetime.fromtimestamp( data[column] ).strftime("%H:%M:%S") )
                 row.append( item )
+
+            elif COLUMNS[column] == ColumnType.SNMP:
+                if column in data:
+                    # TODO: better separation
+                    name = data[column][0]
+                    description = data[column][1]
+                    uptime = int( data[column][2] )
+                    hours, remainder = divmod(int(uptime/100), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    days, hours = divmod(hours, 24)                    
+                    if days:
+                        uptime = "up: {d}d, {h}:{m:02d}:{s:02d}, {n}, {i}"
+                    else:
+                        uptime = "up: {h}:{m:02d}:{s:02d}, {n}, {i}"
+                        
+                    line = uptime.format(d=days, h=hours, m=minutes, s=seconds, n=name, i=description)
+                    item = QStandardItem( line )
+                else:
+                    item = QStandardItem( "-" )
+                row.append( item )
             
             else:
             #case ColumnType.STRING:
             #case _:
-                item = QStandardItem( str( column in data and data[column] or "-" ) )
+                value = column in data and data[column] or "-"
+                if isinstance(value, list):
+                    value = ", ".join( value )
+                item = QStandardItem( str( value ) )
                 row.append( item )
 
 
